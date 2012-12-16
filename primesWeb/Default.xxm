@@ -1,0 +1,246 @@
+[[@Windows,Classes,primeUtils,]][[!
+const
+primes_readblock=$10000;
+maxnext=100000;
+var
+fn,s,eol:string;
+x,y,z,p,a:baseint;
+fx,lx,px:int64;
+i,j,n:integer;
+f:TFileStream;
+pp:array[0..primes_readblock-1] of baseint;
+rc:cardinal;
+qpd,qpt,qpt1:int64;
+]][[
+SetLength(fn,1024);
+SetLength(fn,GetModuleFileName(HInstance,PChar(fn),1024));
+i:=Length(fn);
+while (i>0) and (fn[i]<>PathDelim) do dec(i);
+if i>0 then dec(i);
+while (i>0) and (fn[i]<>PathDelim) do dec(i);
+fn:=Copy(fn,1,i)+primes_filename;
+
+i:=Context['a'].AsInteger;
+if i=0 then
+ begin
+  ]]
+  <html>
+  <head>
+  <style type="text/css"><!--
+  BODY,INPUT{font-family:sans-serif;}
+  //--></style>
+  </head>
+  <body>
+  <h1>primes</h1>
+  <form>
+  <dl>
+  <dt>what</dt>
+  <dd>
+  <input type="radio" name="a" value="1" checked="1" id="a1" /><label for="a1">p(x) <i>(leave x blank for max)</i></label><br />
+  <input type="radio" name="a" value="2" id="a2" /><label for="a2">i where x=p(i) or smallest x&lt;p(i)</label></br />
+  <input type="radio" name="a" value="3" id="a3" /><label for="a3">factors of x</label><br />
+  <input type="radio" name="a" value="4" id="a4" /><label for="a4">isqrt(x)</label><br />
+  </dd>
+  <dt>x =</dt>
+  <dd><input type="text" name="x" /></dd>
+  <dt>format</dt>
+  <dd>
+  <input type="radio" name="t" value="1" checked="1" id="t1" /><label for="t1">text/html</label><br />
+  <input type="radio" name="t" value="2" id="t2" /><label for="t2">text/plain</label><br />
+  </dd>
+  <dt>and show next <i>(not with factors)</i></dt>
+  <dd>
+  <select name="n">
+  [[
+  i:=1;
+  while i<=maxnext do
+   begin
+    ]]<option value="[[=i]]">[[=i-1]]</option>
+	[[
+    i:=i*10;
+   end;
+  ]]
+  </select>
+  </dd>
+  </dl>
+  <p><input type="submit" value="&nbsp; GO &nbsp;" /></p>
+  </form>
+  <p><a href="http://yoy.be/primes">about...</a></p>
+  </body>
+  </html>
+  [[
+ end
+else
+ begin
+  if not QueryPerformanceFrequency(qpd) then qpd:=1000;
+  if not QueryPerformanceCounter(qpt) then qpt:=GetTickCount;
+  rc:=0;
+  case Context['t'].AsInteger of
+    1:
+	 begin
+	  eol:='<br />';
+	  Context.SendHTML('<style>BODY{font-family:sans-serif;}</style>'#13#10);
+	 end;
+	2:
+	 begin
+	  eol:=#13#10;
+	  Context.ContentType:='text/plain';
+	 end;
+  end;
+  f:=TFileStream.Create(fn,fmOpenRead or fmShareDenyNone);
+  try
+	fx:=f.Size div baseintsize;
+	s:=Context['x'].Value;
+	n:=Context['n'].AsInteger;
+	if n<=0 then n:=1;
+	if n>maxnext then n:=maxnext;
+    case i of
+      1://p(x)
+       begin
+	    if s='' then
+	     begin
+          dec(fx);
+          f.Position:=fx*baseintsize;
+          f.Read(p,baseintsize);
+		  inc(rc,baseintsize);
+		  Context.SendHTML('p('+IntToStrX(fx)+')='+IntToStrX(p)+eol);
+	     end
+	    else
+	     begin
+		  x:=StrToIntX(s);
+		  if x>=fx then
+		    Context.SendHTML('!!! searching past end of primes list'+eol)
+		  else
+		   begin
+		    px:=(x div primes_readblock)*primes_readblock;
+			i:=x mod primes_readblock;
+		    f.Position:=px*baseintsize;
+			lx:=f.Read(pp[0],primes_readblock*baseintsize);
+			inc(rc,primes_readblock*baseintsize);
+			while (n<>0) and (lx<>0) and Context.Connected do
+			 begin
+		      Context.SendHTML('p('+IntToStrX(x)+')='+IntToStrX(pp[i])+eol);
+			  dec(n);
+			  inc(i);
+			  inc(x);
+			  if i=primes_readblock then
+			   begin
+				inc(px,primes_readblock);
+				f.Position:=px*baseintsize;
+				lx:=f.Read(pp[0],primes_readblock*baseintsize);
+				inc(rc,primes_readblock*baseintsize);
+			    i:=0;
+			   end;
+			 end;
+		   end;
+	     end;
+	   end;
+	  2://i in x=p(i)
+	   begin
+	    x:=StrToIntX('0'+s);
+        //start with an estimated number less and more than the prime index
+        y:=0;//TODO: invert n*ln(n)
+		z:=(x div 3)+1;
+		y:=(y div primes_readblock);
+		z:=(z div primes_readblock);
+		//if y*primes_readblock>fx then y:=fx div primes_readblock;
+		if z*primes_readblock>fx then z:=fx div primes_readblock;
+		if z<y then z:=y;
+		while (y<z) and Context.Connected do
+		 begin
+		  a:=(y+z) div 2;
+		  f.Position:=a*primes_readblock*baseintsize;
+          f.Read(p,baseintsize);
+          inc(rc,baseintsize);
+		  if (p<x) and (a<>y) then y:=a else 
+		    if a+1>=z then dec(z) else z:=a+1;
+		 end;
+		if y=z then
+         begin
+		  y:=y*primes_readblock;
+          f.Position:=y*baseintsize;
+          f.Read(pp[0],primes_readblock*baseintsize);
+          inc(rc,primes_readblock*baseintsize);
+          //search inside of block
+          i:=0;
+          while (pp[i]<x) and (i<primes_readblock) and Context.Connected do inc(i);
+		  if i=primes_readblock then
+		    Context.SendHTML('!!! searching past end of primes list'+eol)
+		  else
+		   begin
+            //now list
+            while (n<>0) and Context.Connected do//while (p[d]<b) or (a=b) do
+             begin
+              Context.SendHTML('p('+IntToStrX(y+i)+')='+IntToStrX(pp[i])+eol);
+              inc(i);
+              if i=primes_readblock then
+               begin
+                inc(y,primes_readblock);
+                f.Read(pp[0],primes_readblock*baseintsize);
+                inc(rc,primes_readblock*baseintsize);
+                i:=0;
+               end;
+              //if a=b then b:=0;
+              dec(n);
+             end;
+		   end;
+		 end;
+	   end;
+	  3://factors
+	   begin
+	    x:=StrToIntX('0'+s);
+        y:=isqrt(x);
+        z:=0;
+		j:=0;
+        fx:=0;
+        lx:=f.Read(pp[0],primes_readblock*baseintsize) div baseintsize;
+		inc(rc,primes_readblock*baseintsize);
+        px:=0;
+        while (x>1) and (z<=y) and (px<lx) and Context.Connected do
+         begin
+          z:=pp[px];
+          i:=0;
+          while (x<>0) and ((x mod z)=0) and Context.Connected do
+           begin
+            inc(i);
+            x:=x div z;
+            y:=x;//y+isqrt(x);//?
+           end;
+          if i<>0 then 
+		   begin
+			Context.SendHTML('p('+IntToStr(fx+px)+')='+IntToStrX(z)+' * '+IntToStrX(i)+eol);
+		    inc(j);
+		   end;
+          inc(px);
+          if px=lx then //=primes_readblock then
+           begin
+            inc(fx,lx);
+            lx:=f.Read(pp[0],primes_readblock*baseintsize) div baseintsize;
+			inc(rc,primes_readblock*baseintsize);
+            px:=0;
+           end;
+         end;
+        if px=lx then Context.SendHTML('!!! insufficient primes in file'+eol) else
+		  if j=0 then
+		    if x=0 then Context.SendHTML('!!! zero'+eol) else Context.SendHTML('!!! prime'+eol);
+	   end;
+	  4://isqrt
+	   begin
+	    x:=StrToIntX('0'+s);
+		while (n<>0) and Context.Connected do
+		 begin
+		  Context.SendHTML('isqrt('+IntToStrX(x)+')='+IntToStrX(isqrt(x))+eol);
+		  inc(x);
+		  dec(n);
+		 end;
+	   end;
+    end;
+    if not QueryPerformanceFrequency(qpd) then qpd:=1;
+    if not QueryPerformanceCounter(qpt1) then qpt1:=GetTickCount;
+    Context.SendHTML('['+IntToStr((qpt1-qpt)*1000 div qpd)+'ms,'+IntToStr(rc)+' bytes read]');
+  finally
+    f.Free;
+  end;
+end;
+
+]]

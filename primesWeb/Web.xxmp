@@ -1,0 +1,10 @@
+<XxmWebProject>
+	<ProjectName>primes</ProjectName>
+	<CompileCommand>dcc32 -U[[HandlerPath]]\public -U..\..\FastMM -Q [[ProjectName]].dpr</CompileCommand>
+	<UUID>{89562418-35D0-4E55-93AE-A2D2F24A1C68}</UUID>
+	<Files>
+		<Unit UnitName="FastMM4" UnitPath="..\FastMM\"/>
+		<File ID="default_xxm" UnitName="default_xxm1" UnitPath=""><Path>Default.xxm</Path></File>
+		<Unit UnitName="primeUtils" UnitPath="..\"/>
+	</Files>
+</XxmWebProject>
