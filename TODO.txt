@@ -1,0 +1,5 @@
+# primes TODO
+
+* multi-processor (multi-thread? affinity?)
+* something more portable than one gigantic file with the 64-bit primes
+* delegate web-portal accepting done work, with credibility and checking?
