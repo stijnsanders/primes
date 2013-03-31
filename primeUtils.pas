@@ -14,6 +14,8 @@ function isqrt(x:baseint):baseint;
 
 implementation
 
+uses SysUtils;
+
 function IntToStrX(x:baseint):string;
 begin
   Result:='';
@@ -26,10 +28,15 @@ end;
 function StrToIntX(x:string):baseint;
 var
   i:integer;
+  y:baseint;
 begin
   Result:=0;
   for i:=1 to Length(x) do if x[i] in ['0'..'9'] then
+   begin
+    y:=Result;
     Result:=Result*10+(byte(x[i]) and $F);
+	if Result<y then raise Exception.Create('Integer too big for 64 bit');
+   end;
     //else raise?
   //TODO: check past usable bits
 end;
