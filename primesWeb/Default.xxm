@@ -220,7 +220,24 @@ else
 		    if x=0 then Context.SendHTML('!!! zero'+eol) else Context.SendHTML('!!! prime'+eol)
 		  else
 		    if z>y then
-			  Context.SendHTML('p('+IntToStr(fx+px)+')='+IntToStrX(x)+' ^ 1'+eol);
+			 begin
+			  //Context.SendHTML('p(?)='+IntToStrX(x)+' ^ 1'+eol);
+			  while (px<lx) and (pp[px]<>x) and Context.Connected do
+			   begin
+			    inc(px);
+			    if px=lx then //=primes_readblock then
+			     begin
+				  inc(fx,lx);
+				  lx:=f.Read(pp[0],primes_readblock*baseintsize) div baseintsize;
+				  inc(rc,primes_readblock*baseintsize);
+				  px:=0;
+			     end;
+			   end;
+              if px=lx then
+			    Context.SendHTML('p(?)='+IntToStrX(x)+' ^ 1 (!!! searching past end of primes list)'+eol)
+			  else
+			    Context.SendHTML('p('+IntToStr(fx+px)+')='+IntToStrX(x)+' ^ 1'+eol);
+			 end;
 	   end;
 	  4://isqrt
 	   begin
